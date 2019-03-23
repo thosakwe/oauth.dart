@@ -17,7 +17,7 @@ const Base64Codec _base64 = const Base64Codec();
  *  request. Generally you should prefer use of [signRequest] or [Client] 
  */
 Map<String, String> generateParameters(
-    http.Request request, Tokens tokens, String nonce, int timestamp) {
+    http.BaseRequest request, Tokens tokens, String nonce, int timestamp) {
   Map<String, String> params = new Map<String, String>();
   params["oauth_consumer_key"] = tokens.consumerId;
   if (tokens.userId != null) {
@@ -37,7 +37,9 @@ Map<String, String> generateParameters(
       request.contentLength != 0 &&
       ContentType.parse(request.headers["Content-Type"]).mimeType ==
           "application/x-www-form-urlencoded") {
-    requestParams.addAll(mapParameters(request.bodyFields));
+    if (request is http.Request) {
+      requestParams.addAll(mapParameters(request.bodyFields));
+    }
   }
 
   var sigBase =
@@ -91,7 +93,8 @@ class Client extends http.BaseClient {
    *  streaming as the body parameters are required as part of the signature.
    */
   Client(this.tokens, {http.BaseClient client})
-      : _client = client != null ? client : new http.Client();
+      : _client =
+            client != null ? client : new http.Client() as http.BaseClient;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {

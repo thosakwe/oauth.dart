@@ -22,9 +22,9 @@ int _hexDigit(int v) {
 }
 
 List<int> oauthEncode(val) {
-  if (val is String) val = utf8.encode(val);
+  if (val is String) val = utf8.encode(val as String);
 
-  return new List<int>.from(val.expand((int b) {
+  return new List<int>.from((val as Iterable<int>).expand((int b) {
     if ((b >= $0 && b <= $9) ||
         (b >= $A && b <= $Z) ||
         (b >= $a && b <= $z) ||
@@ -52,15 +52,19 @@ int _unhexDigit(int v) {
 }
 
 String oauthDecode(val) {
-  if (val is String) val = val.codeUnits;
+  List<int> list;
+  if (val is String)
+    list = val.codeUnits;
+  else
+    list = val as List<int>;
 
   List<int> buf = new List<int>();
-  for (int i = 0; i < val.length; i++) {
+  for (int i = 0; i < list.length; i++) {
     if (val[i] == $perc) {
-      buf.add(_unhexDigit(val[i + 1]) << 4 | _unhexDigit(val[i + 2]));
+      buf.add(_unhexDigit(list[i + 1]) << 4 | _unhexDigit(list[i + 2]));
       i += 2;
     } else {
-      buf.add(val[i]);
+      buf.add(list[i]);
     }
   }
 

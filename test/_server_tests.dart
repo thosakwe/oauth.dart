@@ -22,7 +22,7 @@ Future<oauth.Tokens> simpleTokenFinder(
       consumerId: consumer,
       consumerKey: consumerSecret,
       userId: user,
-      userKey: userSecret);
+      userKey: userSecret as String);
 }
 
 runAllServerTests(HttpServer Function() serverFn) {

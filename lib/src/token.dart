@@ -155,7 +155,7 @@ class _KeyPair {
 
   factory _KeyPair.decode(String key) {
     assert(key != null);
-    Map<String, dynamic> vals = json.decode(key);
+    var vals = json.decode(key) as Map<String, dynamic>;
     if (vals.containsKey("kty") && vals["kty"] != "RSA") {
       throw new ArgumentError("JWK type must be RSA");
     }
@@ -166,19 +166,19 @@ class _KeyPair {
 
     _checkContains(vals, ['n', 'e'],
         "Key does not specify all public key parameters", true);
-    var n = _b64bigint(vals['n']);
-    var e = _b64bigint(vals['e']);
+    var n = _b64bigint(vals['n'] as String);
+    var e = _b64bigint(vals['e'] as String);
     var pubKey = new RSAPublicKey(n, e);
 
-    var privKey = null;
+    RSAPrivateKey privKey;
     if (_checkContains(
         vals,
         ['d', 'p', 'q'],
         "Key does not specify all necessary private key parameters (d, p, q)",
         false)) {
-      var d = _b64bigint(vals['d']);
-      var p = _b64bigint(vals['p']);
-      var q = _b64bigint(vals['q']);
+      var d = _b64bigint(vals['d'] as String);
+      var p = _b64bigint(vals['p'] as String);
+      var q = _b64bigint(vals['q'] as String);
       privKey = new RSAPrivateKey(n, d, p, q);
     }
 
@@ -242,7 +242,9 @@ class RsaSha1Tokens extends Tokens {
     var params = new ParametersWithRandom(
         new PrivateKeyParameter(privateKey), _SecureRandom.INSTANCE);
     signer.init(true, params);
-    return (signer.generateSignature(body) as dynamic).bytes;
+    return (signer.generateSignature(
+            body is Uint8List ? body : Uint8List.fromList(body)) as dynamic)
+        .bytes as List<int>;
   }
 
   bool verify(List<int> signature, List<int> body) {
@@ -255,6 +257,7 @@ class RsaSha1Tokens extends Tokens {
         new PublicKeyParameter(publicKey), _SecureRandom.INSTANCE);
     signer.init(false, params);
     return signer.verifySignature(
-        body, new RSASignature(new Uint8List.fromList(body)));
+        body is Uint8List ? body : Uint8List.fromList(body),
+        new RSASignature(new Uint8List.fromList(body)));
   }
 }
