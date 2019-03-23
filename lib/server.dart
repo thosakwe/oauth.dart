@@ -1,15 +1,20 @@
 /** Server support for OAuth 1.0a with the dart:io [HttpServer] */
 library oauth.server;
+
 import 'dart:async';
 import 'dart:convert';
-import 'package:oauth/src/token.dart';
-import 'package:oauth/src/core.dart';
-import 'package:oauth/src/utils.dart';
-export 'package:oauth/src/token.dart' show Tokens;
+import 'package:oauth_forked/src/token.dart';
+import 'package:oauth_forked/src/core.dart';
+import 'package:oauth_forked/src/utils.dart';
+export 'package:oauth_forked/src/token.dart' show Tokens;
 
 final _paramRegex = new RegExp(r'^\s*(\w+)\s*=\s*"([^"]*)"\s*$');
+
 class _NotAuthorized implements Exception {}
-void _require(bool test) { if(!test) throw new _NotAuthorized(); }
+
+void _require(bool test) {
+  if (!test) throw new _NotAuthorized();
+}
 
 /** Invoked by `isAuthorized` in order to look up the tokens for a request
  * 
@@ -18,9 +23,7 @@ void _require(bool test) { if(!test) throw new _NotAuthorized(); }
  * the user credentials will be absent from the returned Tokens object  
  */
 typedef Future<Tokens> TokenFinder(
-    String signatureMethod, 
-    String consumerKey, 
-    String userKey);
+    String signatureMethod, String consumerKey, String userKey);
 
 /** Invoked by `isAuthorized` in order to validate the non-reuse of the request
  *  nonce.
@@ -45,19 +48,19 @@ typedef Future<Tokens> TokenFinder(
  *  The implementation should implement a process which periodically sweeps 
  *  expired nonce values from the database.
  */
-typedef Future<bool> NonceQuery(String consumerToken, String userToken, 
-    String nonce, DateTime expiry);
+typedef Future<bool> NonceQuery(
+    String consumerToken, String userToken, String nonce, DateTime expiry);
 
 abstract class RequestAdapter {
   String get method;
-  
+
   String getHeader(String named);
-  
-  String   get mimeType;
+
+  String get mimeType;
   Encoding get encoding;
-  
+
   Uri get requestedUri;
-  
+
   Stream<List<int>> get body;
 }
 
@@ -75,83 +78,86 @@ abstract class RequestAdapter {
  * 
  * Returns whether the request should be permitted.
  */
-Future<bool> isAuthorized(RequestAdapter request, 
-                          TokenFinder tokenFinder,
-                          NonceQuery  nonceQuery,
-                          {Duration timestampLeeway}) {  
+Future<bool> isAuthorized(
+    RequestAdapter request, TokenFinder tokenFinder, NonceQuery nonceQuery,
+    {Duration timestampLeeway}) {
   Map<String, String> params;
   String signature;
   Tokens tokens;
   String consumerKey, tokenKey;
-  
-  timestampLeeway = timestampLeeway != null ? 
-      timestampLeeway : new Duration(minutes: 10);
-  
+
+  timestampLeeway =
+      timestampLeeway != null ? timestampLeeway : new Duration(minutes: 10);
+
   return async.then((_) {
     String authHeader = request.getHeader('Authorization');
     _require(authHeader != null);
     _require(authHeader.startsWith("OAuth "));
-    
+
     authHeader = authHeader.substring(5);
-    
+
     params = new Map<String, String>();
-    for(var e in authHeader.split(",")) {
+    for (var e in authHeader.split(",")) {
       Match res = _paramRegex.matchAsPrefix(e);
       _require(res != null);
-      
-      String key   = oauthDecode(res[1]);
+
+      String key = oauthDecode(res[1]);
       String value = oauthDecode(res[2]);
       params[key] = value;
     }
-    
-    if(params.containsKey("oauth_version"))
+
+    if (params.containsKey("oauth_version"))
       _require(params["oauth_version"] == "1.0");
-    
+
     _require(params["oauth_signature_method"] == "HMAC-SHA1" ||
         params["oauth_signature_method"] == "RSA-SHA1");
-    
-    consumerKey   = params["oauth_consumer_key"];
+
+    consumerKey = params["oauth_consumer_key"];
     _require(consumerKey != null);
-    
-    tokenKey      = params["oauth_token"];
-    
+
+    tokenKey = params["oauth_token"];
+
     signature = params.remove("oauth_signature");
     _require(signature != null);
-    
+
     var strTimestamp = params["oauth_timestamp"];
     _require(strTimestamp != null);
-    
+
     var timestamp = new DateTime.fromMillisecondsSinceEpoch(
-        int.parse(strTimestamp, radix: 10) * 1000, isUtc: true);
-    
-    var now     = new DateTime.now();
-    var diff    = now.difference(timestamp);
+        int.parse(strTimestamp, radix: 10) * 1000,
+        isUtc: true);
+
+    var now = new DateTime.now();
+    var diff = now.difference(timestamp);
     _require(diff < timestampLeeway);
-    
-    return nonceQuery(consumerKey, tokenKey, params["oauth_nonce"], 
+
+    return nonceQuery(consumerKey, tokenKey, params["oauth_nonce"],
         timestamp.add(timestampLeeway * 2));
   }).then((res) {
     _require(res);
-    
+
     return tokenFinder(params["oauth_signature_method"], consumerKey, tokenKey);
-  }).then((Tokens tokens_) {
+  }).then<List<Parameter>>((Tokens tokens_) {
     tokens = tokens_;
-    
+
     List<Parameter> reqParams = new List<Parameter>.from(mapParameters(params));
     reqParams.addAll(mapParameters(request.requestedUri.queryParameters));
     String mimeType = request.mimeType;
-    if(mimeType != null && mimeType == "application/x-www-form-urlencoded") {
+    if (mimeType != null && mimeType == "application/x-www-form-urlencoded") {
       Encoding encoding = request.encoding;
-      if(encoding == null) encoding = UTF8;
+      if (encoding == null) encoding = utf8;
       return encoding.decodeStream(request.body).then((String data) {
-        reqParams.addAll(mapParameters(Uri.splitQueryString(data, encoding: encoding)));
+        reqParams.addAll(
+            mapParameters(Uri.splitQueryString(data, encoding: encoding)));
         return reqParams;
       });
     } else {
       return reqParams;
     }
-  }).then((List<Parameter> reqParams) {   
-    List<int> sigBase = computeSignatureBase(request.method, request.requestedUri, reqParams);
-    return tokens.verify(const Base64Codec.urlSafe().decode(signature), sigBase);
+  }).then((List<Parameter> reqParams) {
+    List<int> sigBase =
+        computeSignatureBase(request.method, request.requestedUri, reqParams);
+    return tokens.verify(
+        const Base64Codec.urlSafe().decode(signature), sigBase);
   }).catchError((_) => false, test: (e) => e is _NotAuthorized);
 }

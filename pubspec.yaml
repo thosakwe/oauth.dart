@@ -1,14 +1,15 @@
-name: oauth
+name: oauth_forked
 version: 0.4.0
 author: Owen Shepherd <*@owenshepherd.net>
 description: An implementation of OAuth 1.0a per RFC 5849
 homepage: https://github.com/oshepherd/oauth.dart
 environment:
-    sdk: ">=1.8.0 <2.0.0"
+    sdk: ">=2.0.0 <3.0.0"
 dependencies:
-  cipher: '>=0.7.0 <0.8.0'
+  # cipher: '>=0.7.0 <0.8.0'
   crypto: '^2.0.1'
-  http: '>=0.10.0 <0.12.0'
+  http: ^0.12.0
+  pointycastle: ^1.0.0
 dev_dependencies:
   shelf: '>=0.6.7+2'
-  test: '>=0.10.0'
+  test: ^1.0.0

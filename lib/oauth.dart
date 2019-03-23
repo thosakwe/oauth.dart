@@ -3,14 +3,13 @@
  */
 library oauth;
 
-export 'package:oauth/client.dart' show 
-  Client, 
-  generateParameters,
-  produceAuthorizationHeader,
-  signRequest,
-  Tokens;
+export 'package:oauth_forked/client.dart'
+    show
+        Client,
+        generateParameters,
+        produceAuthorizationHeader,
+        signRequest,
+        Tokens;
 
-export 'package:oauth/server.dart' show 
-  isAuthorized,  
-  TokenFinder, 
-  NonceQuery;
+export 'package:oauth_forked/server.dart'
+    show isAuthorized, TokenFinder, NonceQuery;
